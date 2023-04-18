@@ -32,4 +32,4 @@ app.use((error, request, response, next) => {
 
 
 const PORT = 3333;
-app.listen(PORT, () => console.log(`Opa caraio ${PORT}`));
+app.listen(PORT, () => console.log(`listening on port:${PORT}`));
