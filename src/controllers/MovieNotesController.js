@@ -28,7 +28,7 @@ class MovieNotesController {
         user_id,
       };
     });
-    console.log(tagsInsert);
+    console.log("tagsInsert: ", tagsInsert);
 
     await knex("movie_tags").insert(tagsInsert);
 
