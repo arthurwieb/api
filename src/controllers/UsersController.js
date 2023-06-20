@@ -1,73 +1,78 @@
-const { hash, compare } = require('bcryptjs');
+const { hash, compare } = require("bcryptjs");
 const AppError = require("../utils/AppError");
 const sqliteConnection = require("../database/sqlite");
 
 class UsersController {
-    async create(request, response) {
-        const { name, email, password } = request.body;
-        
-        const database = await sqliteConnection();
-        const checkUserExists = await database.get("SELECT * FROM users WHERE email = (?)", [email])
+  async create(request, response) {
+    const { name, email, password } = request.body;
 
-        if (checkUserExists) {
-            throw new AppError("User already exists");
-        }
+    const database = await sqliteConnection();
+    const checkUserExists = await database.get(
+      "SELECT * FROM users WHERE email = (?)",
+      [email]
+    );
 
-        const hashedPassword = await hash(password, 8)
-
-        await database.run(
-            "INSERT INTO users (name, email, password) VALUES (?, ? ,?)", [name, email, hashedPassword]
-        );
-
-        return response.status(201).json();
+    if (checkUserExists) {
+      throw new AppError("User already exists");
     }
 
-    async update(request, response) {
-        const { name, email, password, old_password } = request.body;
-        const { id } = request.params;
-        
-        const database = await sqliteConnection();
-        const user = await database.get("SELECT * FROM users WHERE id = (?)", [id]);
+    const hashedPassword = await hash(password, 8);
 
-        if (!user) {
-            throw new AppError('User not found');
-        }
+    await database.run(
+      "INSERT INTO users (name, email, password) VALUES (?, ? ,?)",
+      [name, email, hashedPassword]
+    );
 
+    return response.status(201).json();
+  }
 
-        
-        const userWithUpdatedEmail = await database.get("SELECT * FROM users WHERE email = (?)", [email]);
+  async update(request, response) {
+    const { name, email, password, old_password } = request.body;
+    const user_id = request.user.id;
 
-        if (userWithUpdatedEmail && userWithUpdatedEmail.id !== user.id) {
-            throw new AppError('Email already in use');
-        } 
+    const database = await sqliteConnection();
+    const user = await database.get("SELECT * FROM users WHERE id = (?)", [
+      user_id,
+    ]);
 
-        user.name = name ?? user.name;
-        user.email = email ?? user.email;
+    if (!user) {
+      throw new AppError("User not found");
+    }
 
-        if ( password && !old_password ) {
-            throw new AppError('Password not match')
-        }
+    const userWithUpdatedEmail = await database.get(
+      "SELECT * FROM users WHERE email = (?)",
+      [email]
+    );
 
-        if ( password && old_password ) {
-            const checkOldPassword = await compare(old_password, user.password);
+    if (userWithUpdatedEmail && userWithUpdatedEmail.id !== user.id) {
+      throw new AppError("Email already in use");
+    }
 
-            if(!checkOldPassword) {
-                throw new AppError('Last password mismatch')
-            }
+    user.name = name ?? user.name;
+    user.email = email ?? user.email;
 
-            user.password = await hash(password, 8);
-        }
+    if (password && !old_password) {
+      throw new AppError("Password not match");
+    }
 
-        await database.run(`
+    if (password && old_password) {
+      const checkOldPassword = await compare(old_password, user.password);
+
+      if (!checkOldPassword) {
+        throw new AppError("Last password mismatch");
+      }
+
+      user.password = await hash(password, 8);
+    }
+
+    await database.run(
+      `
         UPDATE users SET name = ?, email = ?, password = ?, updated_at = DATETIME('now') WHERE id = ?`,
-        [user.name, user.email, user.password, id]        
-        );
+      [user.name, user.email, user.password, user_id]
+    );
 
-        return response.status(200).json()
-
-
-
-    }
+    return response.status(200).json();
+  }
 }
 
 module.exports = UsersController;
